@@ -1,21 +1,89 @@
-plugins {
-    id "java"
-    id "net.minecraftforge.gradle.forge"
+buildscript {
+    repositories {
+        //new forge repository
+        maven { url "https://maven.minecraftforge.net" }
+    }
+    dependencies {
+        classpath "net.minecraftforge.gradle:ForgeGradle:2.1-SNAPSHOT"
+    }
 }
 
-group 'me.github.shurpe'
-version '1.0'
+plugins {
+    id "java"
+    id "com.github.johnrengelman.shadow" version "2.0.4"
+}
 
-sourceCompatibility = targetCompatibility = 1.8
+apply plugin: "net.minecraftforge.gradle.forge"
+
+version = "1.1"
+group = "me.github.shurpe" //http://maven.apache.org/guides/mini/guide-naming-conventions.html
+archivesBaseName = "mc-session-stealer" //name of the output jar
+
+sourceCompatibility = targetCompatibility = 1.8 //using java 8
 compileJava.options.encoding = "UTF-8"
 
 minecraft {
     version = "1.8.9-11.15.1.2318-1.8.9"
     runDir = "run"
-    mappings = "stable_22"
-    makeObfSourceJar = false
+    mappings = "stable_22" //mappings for 1.8.9
+    makeObfSourceJar = false //disable creation of sources jar
 }
 
-jar {
-    exclude "**/mcmod.info"
+configurations {
+    shade
+    compile.extendsFrom(shade)
+}
+
+repositories {
+    //repos for libraries (not gradle plugins)
+    //example:
+    //maven { url "https://repo.dreamys.studio/" }
+}
+
+dependencies {
+    //shade will bundle your library to the output jar
+    //your libraries will be accessible outside of intellij
+    //example:
+    //shade "studio.dreamys:libSkyblock:1.1.1"
+
+    //compile will make your library available only in this dev environment
+    //your libraries wont be accessible outside of intellij
+    //example:
+    //compile "studio.dreamys:libSkyblock:1.1.1"
+}
+
+processResources {
+    //this will ensure that this task is redone when the versions change.
+    inputs.property "version", project.version
+    inputs.property "mcversion", project.minecraft.version
+
+    //replace stuff in mcmod.info, nothing else
+    from(sourceSets.main.resources.srcDirs) {
+        include "mcmod.info"
+
+        //replace version and mcversion
+        expand "version":project.version, "mcversion":project.minecraft.version
+    }
+
+    //copy everything else, that"s not the mcmod.info
+    from(sourceSets.main.resources.srcDirs) {
+        exclude "mcmod.info"
+    }
+
+    rename '(.+_at.cfg)', 'META-INF/$1'
+}
+
+shadowJar {
+    dependencies {
+        //we remove gson because it belongs to the public api and will break shading
+        //exclude(dependency("com.google.code.gson:gson:2.8.6"))
+    }
+    configurations = [project.configurations.shade]
+    duplicatesStrategy DuplicatesStrategy.EXCLUDE //prevent duplicates
+    classifier "" //prevent creation of unshadowed jar
+}
+
+reobf {
+    //reobfuscate the shadowed jar
+    shadowJar {}
 }

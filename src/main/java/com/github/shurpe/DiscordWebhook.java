@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DiscordWebhook {
+public final class DiscordWebhook {
 
     private final String url;
     private String content, username, avatarUrl;
